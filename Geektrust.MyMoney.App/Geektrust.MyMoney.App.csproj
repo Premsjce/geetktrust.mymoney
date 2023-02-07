@@ -44,18 +44,21 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AppCatalog.cs" />
-    <Compile Include="Constants\AssetNames.cs" />
+    <Compile Include="Constants\AssetType.cs" />
     <Compile Include="Constants\CommandNames.cs" />
     <Compile Include="Constants\Months.cs" />
     <Compile Include="Contracts\IAllocationService.cs" />
     <Compile Include="Contracts\IChangeService.cs" />
     <Compile Include="Contracts\IDBService.cs" />
     <Compile Include="Contracts\IPortfolioService.cs" />
+    <Compile Include="Contracts\ISIPService.cs" />
+    <Compile Include="CustomExceptions\AssetAlreadyExistsException.cs" />
+    <Compile Include="CustomExceptions\AssetDoesNotExistsException.cs" />
     <Compile Include="CustomExceptions\InvalidMonthlyNumberException.cs" />
     <Compile Include="DAL\PortfolioDataStore.cs" />
-    <Compile Include="Helpers\DataParser.cs" />
     <Compile Include="Helpers\MonthHelper.cs" />
-    <Compile Include="Models\Asset.cs" />
+    <Compile Include="Models\AssetDetails.cs" />
+    <Compile Include="Models\AssetPercentage.cs" />
     <Compile Include="Models\Portfolio.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -63,6 +66,7 @@
     <Compile Include="Services\ChangeService.cs" />
     <Compile Include="Services\DatabaseService.cs" />
     <Compile Include="Services\PortfolioService.cs" />
+    <Compile Include="Services\SIPService.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

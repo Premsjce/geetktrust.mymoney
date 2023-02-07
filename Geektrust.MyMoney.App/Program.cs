@@ -1,6 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Linq;
+﻿using System.IO;
 
 namespace Geektrust.MyMoney.App
 {
@@ -10,9 +8,7 @@ namespace Geektrust.MyMoney.App
         {
             var filePath = "inputs\\First.txt";
             if (args.Length != 0)
-            {
                 filePath = args[0];
-            }
 
             var inputCommands = File.ReadAllLines(filePath);
 

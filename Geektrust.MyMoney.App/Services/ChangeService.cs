@@ -13,114 +13,56 @@ namespace Geektrust.MyMoney.App.Services
     {
         private readonly IDBService _dBService;
         private readonly IAllocationService _allocationService;
+        private readonly ISIPService _sipService;
 
-        public ChangeService(IDBService dBService, IAllocationService allocationService)
+        public ChangeService(IDBService dBService, IAllocationService allocationService, ISIPService sipService)
         {
             _dBService = dBService;
             _allocationService = allocationService;
+            _sipService = sipService;
         }
 
-        public async Task<bool> Update(string month, IList<Asset> assetDetails)
+        public async Task<bool> AdjustAfterChange(string month, IList<AssetPercentage> changed)
         {
-
             if (month == Months.JANUARY)
-                return await UpdateJanMonth(assetDetails);
-
-            return await UpdateOtherMonths(month, assetDetails);
-        }
-
-        private async Task<bool> UpdateJanMonth(IList<Asset> assetDetails)
-        {
-            var initialEquityWeights = await _allocationService.GetInitialAllocationFor(AssetNames.EQUITY);
-            var initialGoldWeights = await _allocationService.GetInitialAllocationFor(AssetNames.GOLD);
-            var initialDebtWeights = await _allocationService.GetInitialAllocationFor(AssetNames.DEBT);
-
-            var initAssetWeight = new List<Asset>
             {
-                new Asset(AssetNames.EQUITY, initialEquityWeights),
-                new Asset(AssetNames.GOLD, initialGoldWeights),
-                new Asset(AssetNames.DEBT, initialDebtWeights)
-            };
+                var existingDetails = new List<AssetDetails>();
+                foreach (AssetType assetType in Enum.GetValues(typeof(AssetType)))
+                {
+                    var allocationAmount = await _allocationService.GetAllocationAmount(assetType);
+                    existingDetails.Add(new AssetDetails(assetType, Convert.ToInt32(allocationAmount)));
+                }
 
-            var goldChangeInPercent = assetDetails.First(x => x.Name == AssetNames.GOLD).Value;
-            var debtChangeInPercent = assetDetails.First(x => x.Name == AssetNames.DEBT).Value;
-            var equityChangeInPercent = assetDetails.First(x => x.Name == AssetNames.EQUITY).Value;
-
-            var afterMarketChangeGold = initialGoldWeights + (initialGoldWeights / 100 * goldChangeInPercent);
-            var afterMarketChangeDebt = initialDebtWeights + (initialDebtWeights / 100 * debtChangeInPercent);
-            var afterMarketChangeEquity = initialEquityWeights + (initialEquityWeights / 100 * equityChangeInPercent);
-
-            var totalInitialWeights = afterMarketChangeGold + afterMarketChangeDebt + afterMarketChangeEquity;
-
-            var changedWeight = new List<Asset>
-            {
-                new Asset(AssetNames.EQUITY, initialEquityWeights + afterMarketChangeEquity),
-                new Asset(AssetNames.GOLD, initialGoldWeights + afterMarketChangeGold),
-                new Asset(AssetNames.DEBT, initialDebtWeights + afterMarketChangeDebt)
-            };
-
-            var newItem = new Portfolio
-            {
-                Month = Months.JANUARY,
-                InitialWeight = initAssetWeight,
-                ChangedPercent = null,
-                ChangedWeight = changedWeight,
-                TotalValue = Convert.ToInt32(totalInitialWeights)
-            };
-
-            return await _dBService.CreateOrUpdate(newItem);
-           
-        }
-
-
-        private async Task<bool> UpdateOtherMonths(string month, IList<Asset> assetDetails)
-        {
-            var prevMonth = MonthHelper.GetPreviousMonth(month);
-            var prevDetails = await _dBService.Get(prevMonth);
-            if (prevDetails == null)
-            {
-                return false;
+                return await UpdatePortfolio(month, changed, existingDetails);
             }
 
-            var sipEquityWeights = await _allocationService.GetSIPAllocationFor(AssetNames.EQUITY);
-            var sipGoldWeights = await _allocationService.GetSIPAllocationFor(AssetNames.GOLD);
-            var sipDebtWeights = await _allocationService.GetSIPAllocationFor(AssetNames.DEBT);
-
-            var existingGoldWeight = prevDetails.ChangedWeight.FirstOrDefault(x => x.Name == AssetNames.GOLD).Value;
-            var existingEquityWeight = prevDetails.ChangedWeight.FirstOrDefault(x => x.Name == AssetNames.EQUITY).Value;
-            var existingDebtWeight = prevDetails.ChangedWeight.FirstOrDefault(x => x.Name == AssetNames.DEBT).Value;
-
-            var afterSipGold = existingGoldWeight + sipGoldWeights;
-            var afterSipEquity = existingEquityWeight + sipEquityWeights;
-            var afterSipDebt = existingDebtWeight + sipDebtWeights;
-
-            var goldChangeInPercent = assetDetails.First(x => x.Name == AssetNames.GOLD).Value;
-            var debtChangeInPercent = assetDetails.First(x => x.Name == AssetNames.DEBT).Value;
-            var equityChangeInPercent = assetDetails.First(x => x.Name == AssetNames.EQUITY).Value;
-
-            var afterMarketChangeGold = afterSipGold + (afterSipGold / 100  * goldChangeInPercent);
-            var afterMarketChangeDebt = afterSipDebt + (afterSipGold / 100  * debtChangeInPercent);
-            var afterMarketChangeEquity = afterSipEquity + (afterSipGold / 100  * equityChangeInPercent);
-
-            var totalWeight = afterMarketChangeDebt + afterMarketChangeEquity + afterMarketChangeGold;
-
-            var changedWeights = new List<Asset>()
-            {
-                 new Asset(AssetNames.GOLD, afterMarketChangeGold),
-                 new Asset(AssetNames.EQUITY, afterMarketChangeEquity),
-                 new Asset(AssetNames.DEBT, afterMarketChangeDebt),
-            };
-
-            var updatedItem = new Portfolio
-            {
-                Month = month,
-                InitialWeight = prevDetails.ChangedWeight,
-                ChangedWeight = changedWeights,
-                ChangedPercent = assetDetails,
-                TotalValue = Convert.ToInt32(totalWeight)
-            };
-            return await _dBService.CreateOrUpdate(updatedItem);
+            var prevMonth = MonthHelper.GetPreviousMonth(month);
+            var prevMontDetails = await _dBService.Get(prevMonth);
+            return await UpdatePortfolio(month, changed, prevMontDetails.AdjustedDetails);
         }
 
+        private async Task<bool> UpdatePortfolio(string month, IList<AssetPercentage> changed, IList<AssetDetails> existingDetails)
+        {
+            var adjustedDetails = new List<AssetDetails>();
+            var totalValue = 0;
+            foreach (AssetType assetType in Enum.GetValues(typeof(AssetType)))
+            {
+                var existingValue = existingDetails.FirstOrDefault(x => x.AssetType == assetType).Value;
+                var sipValue = month == Months.JANUARY ? 0 : await _sipService.GetSipAmount(assetType);
+                var changedPercent = changed?.FirstOrDefault(x => x.AssetType == assetType)?.Percent;
+                var adjustedValue = existingValue + sipValue;
+
+                if (changedPercent != null)
+                    adjustedValue = adjustedValue + Convert.ToInt32(adjustedValue / 100 * changedPercent.Value);
+
+                totalValue += adjustedValue;
+
+                adjustedDetails.Add(new AssetDetails(assetType, adjustedValue));
+            }
+
+            var portfolio = new Portfolio(month, adjustedDetails, totalValue);
+
+            return await _dBService.CreateOrUpdate(portfolio);
+        }
     }
 }

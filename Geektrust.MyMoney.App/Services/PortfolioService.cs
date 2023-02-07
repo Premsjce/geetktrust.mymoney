@@ -2,6 +2,7 @@
 using Geektrust.MyMoney.App.Contracts;
 using Geektrust.MyMoney.App.Helpers;
 using Geektrust.MyMoney.App.Models;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -18,13 +19,13 @@ namespace Geektrust.MyMoney.App.Services
             _allocationService = allocationService;
         }
 
-        public async Task<IList<Asset>> Balance(string month)
+        public async Task<IList<AssetDetails>> BalancedAssets(string month)
         {
             var portfolio = await _dBService.Get(month);
-            return portfolio.ChangedWeight;
+            return portfolio.AdjustedDetails;
         }
 
-        public async Task<IList<Asset>> Rebalance()
+        public async Task<IList<AssetDetails>> RebalanceAssets()
         {
             var totalMonths = await _dBService.GetCount();
             if (totalMonths < 6)
@@ -34,27 +35,15 @@ namespace Geektrust.MyMoney.App.Services
             var rebalancableMonth = MonthHelper.GetRebalancebleMonth(month);
             var portfolioItem = await _dBService.Get(rebalancableMonth);
 
-            var goldInitAllocation = await _allocationService.GetInitialAllocationFor(AssetNames.GOLD);
-            var debtInitAllocation = await _allocationService.GetInitialAllocationFor(AssetNames.DEBT);
-            var equityInitAllocation = await _allocationService.GetInitialAllocationFor(AssetNames.EQUITY);
+            var goldAllocationPercent = await _allocationService.GetAllocationPercentage(AssetType.GOLD);
+            var debtAllocationPercent = await _allocationService.GetAllocationPercentage(AssetType.DEBT);
+            var equityAllocationPercetn = await _allocationService.GetAllocationPercentage(AssetType.EQUITY);
 
-            var totalWeight = goldInitAllocation + debtInitAllocation + equityInitAllocation;
-            var goldInitPercent = (goldInitAllocation / totalWeight) * 100;
-            var debtInitPercent = (debtInitAllocation / totalWeight) * 100;
-            var equityInitPercent = (equityInitAllocation / totalWeight) * 100;
+            var goldAsset = new AssetDetails(AssetType.GOLD, Convert.ToInt32(portfolioItem.TotalValue / 100 * goldAllocationPercent));
+            var debtAsset = new AssetDetails(AssetType.DEBT, Convert.ToInt32(portfolioItem.TotalValue / 100 * debtAllocationPercent));
+            var equityAsset = new AssetDetails(AssetType.EQUITY, Convert.ToInt32(portfolioItem.TotalValue / 100 * equityAllocationPercetn));
 
-            var goldAsset = new Asset(AssetNames.GOLD, GetValue(portfolioItem.TotalValue, goldInitPercent));
-            var debtAsset = new Asset(AssetNames.DEBT, GetValue(portfolioItem.TotalValue, debtInitPercent));
-            var equityAsset = new Asset(AssetNames.EQUITY, GetValue(portfolioItem.TotalValue, equityInitPercent));
-
-            var rebalancedWeight = new List<Asset>()
-            {
-                goldAsset, debtAsset, equityAsset
-            };
-
-            return rebalancedWeight;
+            return new List<AssetDetails> { goldAsset, debtAsset, equityAsset };
         }
-
-        private float GetValue(int total, float percent) => (total / percent) * 100;
     }
 }

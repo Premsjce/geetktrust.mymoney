@@ -1,5 +1,8 @@
-﻿using Geektrust.MyMoney.App.Contracts;
+﻿using Geektrust.MyMoney.App.Constants;
+using Geektrust.MyMoney.App.Contracts;
+using Geektrust.MyMoney.App.CustomExceptions;
 using Geektrust.MyMoney.App.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -7,32 +10,45 @@ using System.Threading.Tasks;
 namespace Geektrust.MyMoney.App.Services
 {
     internal class AllocationService : IAllocationService
-    {
-        private IList<Asset> _initialAllocationPercent;
-        private IList<Asset> _sipAllocationValue;
+    {      
+        private IList<AssetDetails> _assetDetails;
+        private int _totalValue = 0;
 
-        public Task UpdateInitAllocations(IList<Asset> initialAllocation)
+        public AllocationService()
         {
-            _initialAllocationPercent = initialAllocation;
-            return Task.CompletedTask;
+            _assetDetails = new List<AssetDetails>();
         }
 
-        public Task UpdateSipAllocations( IList<Asset> sipAllocationValue)
+        public Task AddAllocationDetails(AssetType assetType, int amount)
         {
-            _sipAllocationValue = sipAllocationValue;
-            return Task.CompletedTask;
+            var asset = _assetDetails.FirstOrDefault(x => x.AssetType == assetType);
+            if (asset != null)
+                throw new AssetAlreadyExistsException("Alocation has been done for this Asset already");
+
+            _assetDetails.Add(new AssetDetails(assetType, amount));
+            _totalValue += amount;
+
+            return Task.CompletedTask; throw new System.NotImplementedException();
         }
 
-        public Task<float> GetInitialAllocationFor(string assetName)
+        public Task<int> GetAllocationAmount(AssetType assetType)
         {
-            var allocation = _initialAllocationPercent.FirstOrDefault(x => x.Name == assetName);
-            return Task.FromResult(allocation.Value);
+            var asset = _assetDetails.FirstOrDefault(x => x.AssetType == assetType);
+            if (asset == null)
+                throw new AssetDoesNotExistsException("No Allocation has been made for this Asset type yet");
+
+            return Task.FromResult(asset.Value);
         }
 
-        public Task<float> GetSIPAllocationFor(string assetName)
+        public Task<int> GetTotalAllocationAmount()
         {
-            var allocation = _sipAllocationValue.FirstOrDefault(x => x.Name == assetName);
-            return Task.FromResult(allocation.Value);
+            return Task.FromResult(_totalValue);
+        }
+
+        public async Task<float> GetAllocationPercentage(AssetType assetType)
+        {
+            var amount = await GetAllocationAmount(assetType);
+            return (float)(amount * 100)/_totalValue;
         }
     }
 }

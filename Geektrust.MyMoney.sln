@@ -5,6 +5,8 @@ VisualStudioVersion = 17.4.33213.308
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Geektrust.MyMoney.App", "Geektrust.MyMoney.App\Geektrust.MyMoney.App.csproj", "{374A4603-9029-48E7-9F08-4AEEFEBE1F4E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Geektrust.MyMoney.App.Tests", "Geektrust.MyMoney.App.Tests\Geektrust.MyMoney.App.Tests.csproj", "{4FD89DC2-0B23-4E5D-B20E-51AC7CEC5CD2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{374A4603-9029-48E7-9F08-4AEEFEBE1F4E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{374A4603-9029-48E7-9F08-4AEEFEBE1F4E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{374A4603-9029-48E7-9F08-4AEEFEBE1F4E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4FD89DC2-0B23-4E5D-B20E-51AC7CEC5CD2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4FD89DC2-0B23-4E5D-B20E-51AC7CEC5CD2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4FD89DC2-0B23-4E5D-B20E-51AC7CEC5CD2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4FD89DC2-0B23-4E5D-B20E-51AC7CEC5CD2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

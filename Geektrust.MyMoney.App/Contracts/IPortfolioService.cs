@@ -6,7 +6,8 @@ namespace Geektrust.MyMoney.App.Contracts
 {
     internal interface IPortfolioService
     {
-        Task<IList<Asset>> Balance(string month);
-        Task<IList<Asset>> Rebalance();
+        Task<IList<AssetDetails>> BalancedAssets(string month);
+        Task<IList<AssetDetails>> RebalanceAssets();
+
     }
 }

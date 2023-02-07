@@ -5,7 +5,7 @@ namespace Geektrust.MyMoney.App.DAL
 {
     internal class PortfolioDataStore
     {
-        public IList<Portfolio> PortfolioItems { get; set; }
+        public IList<Portfolio> PortfolioItems { get; }
 
         public PortfolioDataStore()
         {

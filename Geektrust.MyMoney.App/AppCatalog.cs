@@ -16,18 +16,20 @@ namespace Geektrust.MyMoney.App
         private IPortfolioService _portfolioService;
         private IDBService _dBService;
         private IChangeService _changeService;
+        private ISIPService _sipService;
         public AppCatalog()
         {
             _allocationService = new AllocationService();
             _dBService = new DatabaseService();
-            _changeService = new ChangeService(_dBService, _allocationService);
-            _portfolioService = new PortfolioService(_dBService, _allocationService);
+            _sipService = new SIPService();
 
+            _changeService = new ChangeService(_dBService, _allocationService, _sipService);
+            _portfolioService = new PortfolioService(_dBService, _allocationService);
         }
 
         public async Task Driver(string[] inputCommands)
         {
-            foreach(var command in inputCommands)
+            foreach (var command in inputCommands)
             {
                 if (string.IsNullOrEmpty(command))
                     return;
@@ -56,66 +58,66 @@ namespace Geektrust.MyMoney.App
 
         private async Task ProcessAllocationCommand(string[] details)
         {
-            var allocationList = ParseAssetList(details);
-            await _allocationService.UpdateInitAllocations(allocationList);
+            var assetDetails = ParseAssetDetails(details);
+            foreach (var asset in assetDetails)
+                await _allocationService.AddAllocationDetails(asset.AssetType, asset.Value);
         }
 
         private async Task ProcessSIPCommand(string[] details)
         {
-            var sipList = ParseAssetList(details);
-            await _allocationService.UpdateSipAllocations(sipList);
-
+            var sipList = ParseAssetDetails(details);
+            foreach (var asset in sipList)
+                await _sipService.AddSipDetails(asset.AssetType, asset.Value);
         }
 
         private async Task ProcessChangeCommand(string[] details)
         {
             var month = details[4];
-            var assetDetails = ParseAssetList(details);
-            await _changeService.Update(month, assetDetails);
+            var assetDetails = ParseAssetPercentage(details);
+            await _changeService.AdjustAfterChange(month, assetDetails);
         }
 
         private async Task ProcessBalanceCommad(string[] details)
         {
-            var result = await _portfolioService.Balance(details[1]);
-            var gold = result.FirstOrDefault(x => x.Name == AssetNames.GOLD).Value;
-            var equity = result.FirstOrDefault(x => x.Name == AssetNames.GOLD).Value;
-            var debt = result.FirstOrDefault(x => x.Name == AssetNames.GOLD).Value;
+            var resultDetails = await _portfolioService.BalancedAssets(details[1]);
+            var gold = resultDetails.FirstOrDefault(x => x.AssetType == AssetType.GOLD).Value;
+            var equity = resultDetails.FirstOrDefault(x => x.AssetType == AssetType.EQUITY).Value;
+            var debt = resultDetails.FirstOrDefault(x => x.AssetType == AssetType.DEBT).Value;
 
-            Console.WriteLine($"{Convert.ToInt32(debt)} {Convert.ToInt32(equity)} {Convert.ToInt32(gold)}");
+            Console.WriteLine($"{equity} {debt} {gold}");
         }
 
         private async Task ProcessRebalanceCommand(string[] details)
         {
-            var result = await _portfolioService.Rebalance();
-            if(result == null)
+            var result = await _portfolioService.RebalanceAssets();
+            if (result == null)
             {
                 Console.WriteLine("CANNOT_REBALANCE");
                 return;
             }
+            
+            var equity = result.FirstOrDefault(x => x.AssetType == AssetType.EQUITY).Value;
+            var debt = result.FirstOrDefault(x => x.AssetType == AssetType.DEBT).Value;
+            var gold = result.FirstOrDefault(x => x.AssetType == AssetType.GOLD).Value;
 
-            var gold = result.FirstOrDefault(x => x.Name == AssetNames.GOLD).Value;
-            var equity = result.FirstOrDefault(x => x.Name == AssetNames.GOLD).Value;
-            var debt = result.FirstOrDefault(x => x.Name == AssetNames.GOLD).Value;
-
-            Console.WriteLine($"{Convert.ToInt32(debt)} {Convert.ToInt32(equity)} {Convert.ToInt32(gold)}");
+            Console.WriteLine($"{equity} {debt} {gold}");
         }
 
-
-        private IList<Asset> ParseAssetList(string[] details)
+        private IList<AssetDetails> ParseAssetDetails(string[] details)
         {
-            var temp = TrimPercent(details[1]);
-            var equityValue = float.Parse(temp);
-            var debtValue = float.Parse(TrimPercent(details[2]));
-            var goldValue = float.Parse(TrimPercent(details[3]));
+            var equity = new AssetDetails(AssetType.EQUITY, Convert.ToInt32(details[1]));
+            var debt = new AssetDetails(AssetType.DEBT, Convert.ToInt32(details[2]));
+            var gold = new AssetDetails(AssetType.GOLD, Convert.ToInt32(details[3]));
 
-            var assetList = new List<Asset>()
-            {
-                new Asset(AssetNames.EQUITY, equityValue),
-                new Asset(AssetNames.DEBT, debtValue),
-                new Asset(AssetNames.GOLD, goldValue)
-            };
+            return new List<AssetDetails>() { gold, debt, equity };
+        }
 
-            return assetList;
+        private IList<AssetPercentage> ParseAssetPercentage(string[] details)
+        {
+            var equity = new AssetPercentage(AssetType.EQUITY, float.Parse(TrimPercent(details[1])));
+            var debt = new AssetPercentage(AssetType.DEBT, float.Parse(TrimPercent(details[2])));
+            var gold = new AssetPercentage(AssetType.GOLD, float.Parse(TrimPercent(details[3])));
+            return new List<AssetPercentage>() { gold, debt, equity };
         }
 
         private string TrimPercent(string val)
@@ -123,7 +125,7 @@ namespace Geektrust.MyMoney.App
             if (!val.Contains("%"))
                 return val;
 
-            return val.Remove(val.Length-1);
+            return val.Remove(val.Length - 1);
         }
     }
 }

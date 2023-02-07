@@ -6,6 +6,6 @@ namespace Geektrust.MyMoney.App.Contracts
 {
     internal interface IChangeService
     {
-        Task<bool> Update(string month, IList<Asset> assetDetails);
+        Task<bool> AdjustAfterChange(string month, IList<AssetPercentage> assetPercentages);
     }
 }
